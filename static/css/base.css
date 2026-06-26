@@ -65,6 +65,12 @@ body {
     border-radius: 16px;
     padding: 2.5rem;
     box-shadow: var(--shadow-lg);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.auth-card:hover {
+    border-color: rgba(139, 92, 246, 0.25);
+    box-shadow: 0 10px 30px rgba(139, 92, 246, 0.1), var(--shadow-lg);
 }
 
 .auth-header {
@@ -302,13 +308,14 @@ body {
     color: var(--text-primary);
     font-family: var(--font-sans);
     font-size: 0.875rem;
-    transition: all 0.2s ease;
+    transition: border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .form-input:focus {
     outline: none;
     border-color: var(--primary);
-    box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
+    background-color: rgba(15, 23, 42, 0.85);
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.25);
 }
 
 .form-select {
@@ -325,11 +332,14 @@ body {
     background-repeat: no-repeat;
     background-position: right 1rem center;
     background-size: 1.25rem;
+    transition: border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .form-select:focus {
     outline: none;
     border-color: var(--primary);
+    background-color: rgba(15, 23, 42, 0.85);
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.25);
 }
 
 /* Buttons */
@@ -345,18 +355,24 @@ body {
     border-radius: 8px;
     border: none;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     text-decoration: none;
+}
+
+.btn:active {
+    transform: scale(0.96) !important;
 }
 
 .btn-primary {
     background-color: var(--primary);
     color: white;
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.2);
 }
 
 .btn-primary:hover {
     background-color: var(--primary-hover);
     transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(139, 92, 246, 0.3);
 }
 
 .btn-secondary {
@@ -367,15 +383,19 @@ body {
 
 .btn-secondary:hover {
     background-color: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.15);
 }
 
 .btn-danger {
     background-color: var(--color-danger);
     color: white;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
 }
 
 .btn-danger:hover {
     background-color: #dc2626;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(239, 68, 68, 0.3);
 }
 
 .btn-sm {
@@ -404,6 +424,13 @@ body {
     border-radius: 12px;
     padding: 1.5rem;
     box-shadow: var(--shadow-md);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(139, 92, 246, 0.2);
+    box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.3), 0 0 15px rgba(139, 92, 246, 0.05), var(--shadow-md);
 }
 
 .stat-card {
@@ -468,6 +495,22 @@ body {
     border: 1px solid var(--border-color);
     border-radius: 12px;
     box-shadow: var(--shadow-md);
+}
+
+/* Custom Scrollbar for Table Container */
+.table-container::-webkit-scrollbar {
+    height: 6px;
+    width: 6px;
+}
+.table-container::-webkit-scrollbar-track {
+    background: transparent;
+}
+.table-container::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 3px;
+}
+.table-container::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.25);
 }
 
 .custom-table {

@@ -12,6 +12,44 @@
         <span>Add API Key</span>
     </button>
 </div>
+<!-- Search & Live Filters Panel -->
+<div class="card" style="margin-bottom: 2rem; padding: 1.25rem;">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; align-items: center;">
+        <div class="form-group" style="margin-bottom: 0;">
+            <label for="search-keys" class="form-label">Search Keys</label>
+            <div style="position: relative; display: flex; align-items: center;">
+                <input type="text" id="search-keys" class="form-input" placeholder="Search by Label or Service..." style="padding-left: 2.5rem; width: 100%;">
+                <svg style="position: absolute; left: 0.85rem; width: 18px; height: 18px; color: var(--text-secondary);" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+            </div>
+        </div>
+        
+        <div class="form-group" style="margin-bottom: 0;">
+            <label for="filter-service" class="form-label">Filter Service</label>
+            <select id="filter-service" class="form-select">
+                <option value="">All Services</option>
+                <option value="OpenAI">OpenAI</option>
+                <option value="AWS">AWS</option>
+                <option value="Stripe">Stripe</option>
+                <option value="GitHub">GitHub</option>
+                <option value="GoogleCloud">Google Cloud</option>
+                <option value="Custom">Custom / Other</option>
+            </select>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 0;">
+            <label for="filter-status" class="form-label">Filter Status</label>
+            <select id="filter-status" class="form-select">
+                <option value="">All Statuses</option>
+                <option value="active">Active</option>
+                <option value="leaked">Leaked</option>
+                <option value="revoked">Revoked</option>
+                <option value="expired">Expired</option>
+            </select>
+        </div>
+    </div>
+</div>
 
 <!-- Keys Inventory Table -->
 <div class="table-container">
@@ -500,5 +538,65 @@ function scanKey(keyId) {
         }
     });
 }
+
+// Live filtering and search logic
+document.addEventListener("DOMContentLoaded", function() {
+    const searchInput = document.getElementById("search-keys");
+    const serviceFilter = document.getElementById("filter-service");
+    const statusFilter = document.getElementById("filter-status");
+    const tableBody = document.querySelector("#keys-table tbody");
+    
+    if (searchInput && serviceFilter && statusFilter && tableBody) {
+        const rows = tableBody.querySelectorAll("tr");
+        
+        function filterKeys() {
+            const query = searchInput.value.toLowerCase().trim();
+            const serviceVal = serviceFilter.value.toLowerCase();
+            const statusVal = statusFilter.value.toLowerCase();
+            
+            let visibleCount = 0;
+            
+            rows.forEach(row => {
+                // Ignore the empty state row or no matching results row
+                if (row.id === "no-filter-results-row") return;
+                if (row.cells.length === 1 && row.cells[0].colSpan > 1) return;
+                
+                const label = row.cells[0].textContent.toLowerCase();
+                const service = row.cells[1].textContent.toLowerCase();
+                const status = row.querySelector(".badge") ? row.querySelector(".badge").textContent.toLowerCase() : "";
+                
+                const matchesSearch = label.includes(query) || service.includes(query);
+                const matchesService = !serviceVal || service.includes(serviceVal);
+                const matchesStatus = !statusVal || status.trim() === statusVal.trim();
+                
+                if (matchesSearch && matchesService && matchesStatus) {
+                    row.style.display = "";
+                    visibleCount++;
+                } else {
+                    row.style.display = "none";
+                }
+            });
+            
+            // Check if we need to show/hide "No matching results" row
+            let noResultRow = document.getElementById("no-filter-results-row");
+            if (visibleCount === 0 && rows.length > 0 && !(rows.length === 1 && rows[0].cells.length === 1 && rows[0].cells[0].colSpan > 1)) {
+                if (!noResultRow) {
+                    noResultRow = document.createElement("tr");
+                    noResultRow.id = "no-filter-results-row";
+                    noResultRow.innerHTML = `<td colspan="9" style="text-align: center; color: var(--text-secondary); padding: 3rem 0;">No keys match your search criteria.</td>`;
+                    tableBody.appendChild(noResultRow);
+                } else {
+                    noResultRow.style.display = "";
+                }
+            } else if (noResultRow) {
+                noResultRow.style.display = "none";
+            }
+        }
+        
+        searchInput.addEventListener("input", filterKeys);
+        serviceFilter.addEventListener("change", filterKeys);
+        statusFilter.addEventListener("change", filterKeys);
+    }
+});
 </script>
 {% endblock %}
