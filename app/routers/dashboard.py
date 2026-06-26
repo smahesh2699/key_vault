@@ -105,8 +105,37 @@ def sync_real_usage_history(db: Session, user_id: int):
     db.commit()
 
 @router.get("/", response_class=HTMLResponse)
-def root_redirect():
-    return RedirectResponse(url="/dashboard", status_code=303)
+def landing_page(request: Request, db: Session = Depends(get_db)):
+    access_token = request.cookies.get("access_token")
+    refresh_token = request.cookies.get("refresh_token")
+    
+    user = None
+    if access_token:
+        try:
+            from app.core.security import decode_token
+            from app.core.config import settings
+            payload = decode_token(access_token, settings.JWT_SECRET)
+            if payload and payload.get("type") == "access":
+                email = payload.get("sub")
+                user = db.query(User).filter(User.email == email).first()
+        except Exception:
+            pass
+            
+    if not user and refresh_token:
+        try:
+            from app.core.security import decode_token
+            from app.core.config import settings
+            payload = decode_token(refresh_token, settings.JWT_REFRESH_SECRET)
+            if payload and payload.get("type") == "refresh":
+                email = payload.get("sub")
+                user = db.query(User).filter(User.email == email).first()
+        except Exception:
+            pass
+            
+    if user:
+        return RedirectResponse(url="/dashboard", status_code=303)
+        
+    return templates.TemplateResponse(request=request, name="landing.html")
 
 @router.get("/dashboard", response_class=HTMLResponse)
 def dashboard_page(
