@@ -148,7 +148,15 @@
                 </div>
                 <div class="form-group">
                     <label for="key-value" class="form-label">API Key Secret Value</label>
-                    <input type="password" id="key-value" name="value" class="form-input" placeholder="Paste your secret key here" required>
+                    <div style="position:relative; display:flex; align-items:center;">
+                        <input type="password" id="key-value" name="value" class="form-input" placeholder="Paste your secret key here" required style="padding-right: 2.75rem;">
+                        <button type="button" onclick="togglePasswordVisibility('key-value', this)" style="position:absolute; right:1rem; background:none; border:none; color:var(--text-secondary); cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;" title="Toggle Visibility">
+                            <svg style="width:20px;height:20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                        </button>
+                    </div>
                     <span style="font-size:0.75rem; color:var(--text-secondary); margin-top:0.25rem; display:block;">
                         Values are encrypted using Fernet at rest. We never log or share raw secrets.
                     </span>
@@ -189,7 +197,15 @@
                 </p>
                 <div class="form-group" id="reveal-password-group">
                     <label for="reveal-password" class="form-label">Enter Account Password</label>
-                    <input type="password" id="reveal-password" name="password" class="form-input" placeholder="••••••••" required>
+                    <div style="position:relative; display:flex; align-items:center;">
+                        <input type="password" id="reveal-password" name="password" class="form-input" placeholder="••••••••" required style="padding-right: 2.75rem;">
+                        <button type="button" onclick="togglePasswordVisibility('reveal-password', this)" style="position:absolute; right:1rem; background:none; border:none; color:var(--text-secondary); cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;" title="Toggle Visibility">
+                            <svg style="width:20px;height:20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                        </button>
+                    </div>
                 </div>
                 
                 <div id="revealed-value-container" style="display:none;">
@@ -267,6 +283,11 @@
 // Handle API Key Form Submissions via AJAX
 document.getElementById("add-key-form").addEventListener("submit", function(e) {
     e.preventDefault();
+    const btn = this.querySelector("button[type='submit']");
+    const origText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `<svg class="animate-spin" style="width:16px;height:16px;" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 7.89H18.24" /></svg> Saving...`;
+    
     const formData = new FormData(this);
     
     fetch("/keys", {
@@ -281,11 +302,15 @@ document.getElementById("add-key-form").addEventListener("submit", function(e) {
             setTimeout(() => { location.reload(); }, 1000);
         } else {
             showToast(data.error || "Failed to add API key.", "error");
+            btn.disabled = false;
+            btn.innerHTML = origText;
         }
     })
     .catch(err => {
         showToast("An error occurred during submission.", "error");
         console.error(err);
+        btn.disabled = false;
+        btn.innerHTML = origText;
     });
 });
 
@@ -355,6 +380,11 @@ function showEditModal(keyId, label, service, expiresAt, billingPlan) {
 
 document.getElementById("edit-key-form").addEventListener("submit", function(e) {
     e.preventDefault();
+    const btn = this.querySelector("button[type='submit']");
+    const origText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `<svg class="animate-spin" style="width:16px;height:16px;" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 7.89H18.24" /></svg> Updating...`;
+    
     const keyId = document.getElementById("edit-key-id").value;
     const formData = new FormData(this);
     
@@ -370,11 +400,15 @@ document.getElementById("edit-key-form").addEventListener("submit", function(e) 
             setTimeout(() => { location.reload(); }, 1000);
         } else {
             showToast(data.error || "Failed to update details.", "error");
+            btn.disabled = false;
+            btn.innerHTML = origText;
         }
     })
     .catch(err => {
         showToast("An error occurred.", "error");
         console.error(err);
+        btn.disabled = false;
+        btn.innerHTML = origText;
     });
 });
 
