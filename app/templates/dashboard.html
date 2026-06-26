@@ -1,0 +1,628 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard — KeyVault{% endblock %}
+
+{% block content %}
+<!-- Header System Status Banner -->
+<div class="system-status-banner">
+    <div style="display:flex; align-items:center; gap:0.875rem;">
+        <span class="pulse-indicator {% if active_leaks > 0 %}alert{% endif %}"></span>
+        <span style="font-weight:600; font-size:1.15rem; letter-spacing: -0.02em;">
+            {% if active_leaks > 0 %}Security Warning: Exposed Credentials Detected{% else %}System Health Check: All Credentials Secure{% endif %}
+        </span>
+    </div>
+    <div class="status-badge-header {% if active_leaks > 0 %}critical{% else %}secure{% endif %}">
+        {% if active_leaks > 0 %}Critical Exposure{% else %}All Secure{% endif %}
+    </div>
+</div>
+
+<div class="page-header">
+    <h1 class="page-title">Security & Usage Dashboard</h1>
+</div>
+
+<!-- Main Stats Grid -->
+<div class="stats-grid">
+    <!-- Security Health Score Widget -->
+    <div class="card stat-card" style="grid-column: span 2; display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 1.5rem; min-height: 125px;">
+        <div style="display: flex; flex-direction: column; justify-content: center; flex-grow: 1;">
+            <span class="stat-label" style="margin-bottom: 0.25rem;">Security Health Index</span>
+            <div style="font-size: 1.25rem; font-weight: 700; color: {{ health_color }}; margin-bottom: 0.15rem;">
+                {{ health_status }}
+            </div>
+            <div style="font-size: 0.8rem; color: var(--text-secondary); max-width: 320px; line-height: 1.4;">
+                {{ health_desc }}
+            </div>
+        </div>
+        <div class="radial-progress" style="--value: {{ health_score }}; --health-circle-color: {{ health_color }}; flex-shrink: 0; margin-right: 0.5rem;">
+            <svg>
+                <circle cx="40" cy="40" r="32"></circle>
+                <circle cx="40" cy="40" r="32" class="progress-bar"></circle>
+            </svg>
+            <div class="percentage">{{ health_score }}%</div>
+        </div>
+    </div>
+
+    <!-- Total Monitored Keys -->
+    <div class="card stat-card" style="min-height: 125px;">
+        <div class="stat-card-header">
+            <span class="stat-label">Monitored Keys</span>
+            <div class="stat-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m-2 4a5 5 0 11-4-4l-3-3m0 0l-1.5 1.5M10 10l-1.5 1.5M12 12l-1.5 1.5M15 7h3v3" /></svg>
+            </div>
+        </div>
+        <span class="stat-value" style="margin-top: 0.25rem;">{{ total_keys }}</span>
+    </div>
+
+    <!-- Active Leaks -->
+    <div class="card stat-card" style="min-height: 125px;">
+        <div class="stat-card-header">
+            <span class="stat-label">Active Exposures</span>
+            <div class="stat-icon" style="{% if active_leaks > 0 %}background:rgba(239,68,68,0.1); color:var(--color-danger);{% endif %}">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+            </div>
+        </div>
+        <span class="stat-value {% if active_leaks > 0 %}leaked{% endif %}" style="margin-top: 0.25rem;">{{ active_leaks }}</span>
+    </div>
+
+    <!-- Expiring Soon -->
+    <div class="card stat-card" style="min-height: 125px;">
+        <div class="stat-card-header">
+            <span class="stat-label">Expiring (7 Days)</span>
+            <div class="stat-icon" style="{% if expiring_soon > 0 %}background:rgba(245,158,11,0.1); color:var(--color-warning);{% endif %}">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            </div>
+        </div>
+        <span class="stat-value {% if expiring_soon > 0 %}warning{% endif %}" style="margin-top: 0.25rem; {% if expiring_soon > 0 %}color:var(--color-warning);{% endif %}">{{ expiring_soon }}</span>
+    </div>
+
+    <!-- Total Tokens Consumed -->
+    <div class="card stat-card" style="min-height: 125px;">
+        <div class="stat-card-header">
+            <span class="stat-label">Tokens Consumed</span>
+            <div class="stat-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2m0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+            </div>
+        </div>
+        <span class="stat-value" style="margin-top: 0.25rem; color: var(--color-info);">{{ total_tokens }}</span>
+    </div>
+
+    <!-- Estimated Cost Card -->
+    <div class="card stat-card" style="min-height: 125px;">
+        <div class="stat-card-header">
+            <span class="stat-label">Estimated API Cost</span>
+            <div class="stat-icon" style="background:rgba(16,185,129,0.1); color:var(--color-success);">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            </div>
+        </div>
+        <span class="stat-value" style="margin-top: 0.25rem; color: var(--color-success);">{{ estimated_cost }}</span>
+    </div>
+
+    <!-- Average Token Weight Card -->
+    <div class="card stat-card" style="min-height: 125px;">
+        <div class="stat-card-header">
+            <span class="stat-label">Avg. Tokens / Request</span>
+            <div class="stat-icon" style="background:rgba(6,182,212,0.1); color:var(--color-info);">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+            </div>
+        </div>
+        <span class="stat-value" style="margin-top: 0.25rem; color: var(--color-info);">{{ avg_tokens_per_req }}</span>
+    </div>
+</div>
+
+<!-- Quick Actions Panel -->
+<div class="quick-actions-panel">
+    <a href="/keys" class="quick-action-btn">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+        <span style="font-weight:600; font-size:0.875rem;">Add New API Key</span>
+        <span style="font-size:0.75rem; color:var(--text-secondary);">Secure another credential</span>
+    </a>
+    <a href="/alerts" class="quick-action-btn">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+        <span style="font-weight:600; font-size:0.875rem;">Exposures Inbox</span>
+        <span style="font-size:0.75rem; color:var(--text-secondary);">Review active leak alerts</span>
+    </a>
+    <a href="/audit" class="quick-action-btn">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+        <span style="font-weight:600; font-size:0.875rem;">Audit Trail Logs</span>
+        <span style="font-size:0.75rem; color:var(--text-secondary);">View security access feed</span>
+    </a>
+</div>
+
+<!-- Vault Inventory Quick-View Panel -->
+<div class="card" style="margin-bottom: 2.5rem; display: flex; flex-direction: column;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1.25rem;">
+        <h2 class="chart-title" style="margin-bottom: 0;">Vault Inventory Quick Scan</h2>
+        <a href="/keys" style="color:var(--primary); text-decoration:none; font-size:0.875rem; font-weight:600;">Manage Vault</a>
+    </div>
+    
+    <div class="table-container" style="border: none; box-shadow: none;">
+        {% if not user_keys %}
+        <p style="color:var(--text-secondary); font-size:0.875rem; text-align:center; padding: 2rem 0;">
+            No API keys stored in your vault yet. <a href="/keys" style="color: var(--primary);">Add a key</a> to start monitoring.
+        </p>
+        {% else %}
+        <table class="custom-table">
+            <thead>
+                <tr>
+                    <th>Label</th>
+                    <th>Service</th>
+                    <th>Key Prefix</th>
+                    <th>Plan</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th style="text-align: right;">Quick Scan</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for key in user_keys[:5] %}
+                <tr id="key-row-{{ key.id }}">
+                    <td style="font-weight: 600;">
+                        <a href="/keys/{{ key.id }}/analytics" style="color: var(--text-primary); text-decoration: none; border-bottom: 1px dashed rgba(255,255,255,0.2);">
+                            {{ key.label }}
+                        </a>
+                    </td>
+                    <td>
+                        <span style="display:inline-flex; align-items:center; gap:0.4rem;">
+                            {% if 'openai' in key.service.lower() %}
+                                <span style="color:#10b981;">●</span>
+                            {% elif 'google' in key.service.lower() %}
+                                <span style="color:#3b82f6;">●</span>
+                            {% else %}
+                                <span style="color:var(--primary);">●</span>
+                            {% endif %}
+                            {{ key.service }}
+                        </span>
+                    </td>
+                    <td><code class="code-prefix">{{ key.key_prefix }}...</code></td>
+                    <td>
+                        <span class="badge" style="{% if key.billing_plan == 'paid' %}background-color:rgba(245,158,11,0.08); color:var(--color-warning); border:1px solid rgba(245,158,11,0.15);{% else %}background-color:rgba(148,163,184,0.05); color:var(--text-secondary); border:1px solid rgba(148,163,184,0.1);{% endif %}">
+                            {{ key.billing_plan | upper }}
+                        </span>
+                    </td>
+                    <td>
+                        <span id="badge-{{ key.id }}" class="badge badge-{{ key.status }}">
+                            {{ key.status }}
+                        </span>
+                    </td>
+                    <td style="color: var(--text-secondary); font-size: 0.8rem;">
+                        {{ key.created_at.strftime("%Y-%m-%d") }}
+                    </td>
+                    <td style="text-align: right;">
+                        {% if key.status != 'revoked' %}
+                        <button onclick="triggerQuickScan({{ key.id }})" id="scan-btn-{{ key.id }}" class="btn btn-secondary btn-sm" style="padding: 0.35rem 0.65rem; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 0.3rem;">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="12" height="12"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                            Scan
+                        </button>
+                        {% else %}
+                        <span style="color: var(--text-secondary); font-size: 0.75rem;">No actions</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% if user_keys|length > 5 %}
+        <div style="text-align: center; margin-top: 1rem; font-size: 0.8rem;">
+            <a href="/keys" style="color: var(--text-secondary); text-decoration: none;">+{{ user_keys|length - 5 }} more keys stored in Vault. View all.</a>
+        </div>
+        {% endif %}
+        {% endif %}
+    </div>
+</div>
+
+<!-- Charts Grid: Security Stats -->
+<div class="charts-grid">
+    <div class="card chart-card">
+        <h2 class="chart-title">Key Status Distribution</h2>
+        <div class="chart-container">
+            <canvas id="statusChart"></canvas>
+        </div>
+    </div>
+    <div class="card chart-card">
+        <h2 class="chart-title">Credentials by Service Provider</h2>
+        <div class="chart-container">
+            <canvas id="serviceChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<div class="card" style="margin-bottom: 2.5rem; height: 320px; display: flex; flex-direction: column;">
+    <h2 class="chart-title">Credential Exposures over Time (Last 30 Days)</h2>
+    <div class="chart-container" style="flex-grow: 1;">
+        <canvas id="timelineChart"></canvas>
+    </div>
+</div>
+
+<!-- Section: Token Usage Analytics -->
+<div class="page-header" style="margin-top: 3.5rem; margin-bottom: 1.5rem;">
+    <h2 class="page-title" style="font-size: 1.5rem; letter-spacing: -0.02em;">API Token Usage Analytics</h2>
+</div>
+
+<div class="charts-grid">
+    <div class="card chart-card">
+        <h2 class="chart-title">Cumulative Tokens Consumed by Provider</h2>
+        <div class="chart-container">
+            <canvas id="tokenServiceChart"></canvas>
+        </div>
+    </div>
+    <div class="card chart-card">
+        <h2 class="chart-title">Daily Token Consumption Trend (7 Days)</h2>
+        <div class="chart-container">
+            <canvas id="tokenTimelineChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Reference: Understanding API Key Tokens & Costs -->
+<div class="card" style="margin-bottom: 2.5rem; display: flex; flex-direction: column;">
+    <h2 class="chart-title" style="margin-bottom: 1.25rem; color: var(--color-info); display: flex; align-items: center; gap: 0.5rem;">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+        Understanding Your API Key Token Usage & Costs
+    </h2>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; font-size: 0.875rem; line-height: 1.6;">
+        <div style="background: rgba(255,255,255,0.01); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem;">
+            <h3 style="font-weight: 600; color: var(--text-primary); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.4rem;">
+                <span style="color: var(--primary);">✦</span> What is a Token?
+            </h3>
+            <p style="color: var(--text-secondary); font-size: 0.8rem;">
+                Tokens are raw fragments of text processed by language models. 
+                As a general rule, **1 token is about 4 characters of English text**, or roughly **0.75 words**. 
+                For reference, a standard paragraph of 100 words consumes approximately 130 to 140 tokens.
+            </p>
+        </div>
+        <div style="background: rgba(255,255,255,0.01); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem;">
+            <h3 style="font-weight: 600; color: var(--text-primary); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.4rem;">
+                <span style="color: var(--color-info);">✦</span> Prompt vs. Completion
+            </h3>
+            <p style="color: var(--text-secondary); font-size: 0.8rem;">
+                Model processing cost is divided into:
+                <br>• **Prompt (Input)**: The context and instructions sent to the model.
+                <br>• **Completion (Output)**: The words generated by the model in response.
+                <br>Output tokens are typically priced higher than input tokens by providers.
+            </p>
+        </div>
+        <div style="background: rgba(255,255,255,0.01); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem;">
+            <h3 style="font-weight: 600; color: var(--text-primary); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.4rem;">
+                <span style="color: var(--color-success);">✦</span> Cost Estimation Formula
+            </h3>
+            <p style="color: var(--text-secondary); font-size: 0.8rem;">
+                Costs are converted to INR (at ₹83.5/$) based on standard rates per 1,000 tokens:
+                <br>• **OpenAI**: ~₹0.1670 / 1K (GPT blended rate)
+                <br>• **Gemini (Google)**: ~₹0.0125 / 1K (Gemini Flash rate)
+                <br>• **Others**: ~₹0.0835 / 1K (Standard baseline rate)
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- Bottom Section: Recent Alerts and Logs -->
+<div class="dashboard-grid-3" style="margin-top: 3rem; margin-bottom: 2.5rem;">
+    <!-- Recent Alerts -->
+    <div class="card" style="display:flex; flex-direction:column; height: 350px;">
+        <h2 class="chart-title" style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem; margin-bottom: 0.75rem;">
+            <span>Recent Threats</span>
+            <a href="/alerts" style="color:var(--primary); text-decoration:none; font-size:0.875rem; font-weight: 600;">All Alerts</a>
+        </h2>
+        
+        <div style="flex-grow:1; overflow-y:auto;">
+            {% if not recent_alerts %}
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 80%; text-align: center;">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="var(--color-success)" width="32" height="32" style="margin-bottom: 0.5rem; opacity: 0.8;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                <p style="color:var(--text-secondary); font-size:0.875rem;">
+                    No leak incidents detected. Your credentials are secure.
+                </p>
+            </div>
+            {% else %}
+            <div style="display:flex; flex-direction:column; gap:0.75rem;">
+                {% for alert in recent_alerts %}
+                <div style="background-color:rgba(255,255,255,0.01); border:1px solid var(--border-color); border-radius:8px; padding:0.75rem 1rem; display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <div style="font-weight:600; font-size:0.875rem; color: var(--text-primary);">
+                            {{ alert.api_key.label }}
+                        </div>
+                        <div style="font-size:0.75rem; color:var(--text-secondary); margin-top:0.15rem; display: flex; align-items: center; gap: 0.4rem;">
+                            <span>{{ alert.api_key.service }}</span>
+                            <span>•</span>
+                            <span>Detected: {{ alert.detected_at.strftime("%b %d") }}</span>
+                        </div>
+                    </div>
+                    <div>
+                        {% if alert.resolved %}
+                        <span class="badge" style="background-color:rgba(16,185,129,0.08); color:var(--color-success); border: 1px solid rgba(16,185,129,0.15);">Resolved</span>
+                        {% else %}
+                        <span class="badge badge-leaked">Active Leak</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Recent Audit Logs -->
+    <div class="card" style="display:flex; flex-direction:column; height: 350px;">
+        <h2 class="chart-title" style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem; margin-bottom: 0.75rem;">
+            <span>System Activity Feed</span>
+            <a href="/audit" style="color:var(--primary); text-decoration:none; font-size:0.875rem; font-weight: 600;">Full Logs</a>
+        </h2>
+        
+        <div style="flex-grow:1; overflow-y:auto;">
+            {% if not recent_logs %}
+            <p style="color:var(--text-secondary); font-size:0.875rem; text-align:center; padding: 2rem 0;">
+                No recent activity.
+            </p>
+            {% else %}
+            <div style="display:flex; flex-direction:column; gap:0.85rem;">
+                {% for log in recent_logs %}
+                <div style="border-left:3px solid var(--primary); padding-left:0.75rem; background-color: rgba(255,255,255,0.005); padding: 0.5rem 0.75rem; border-radius: 0 6px 6px 0; border-left: 2.5px solid {% if log.action=='deleted' %}var(--color-danger){% elif log.action=='viewed' %}var(--color-info){% elif log.action=='resolved' %}var(--color-success){% else %}var(--primary){% endif %};">
+                    <div style="font-size:0.85rem; color: var(--text-primary);">
+                        <strong>{{ log.action | capitalize }}</strong>
+                        {% if log.api_key %}
+                        key <span style="font-family: var(--font-mono); font-size: 0.8rem; background: rgba(255,255,255,0.05); padding: 0.1rem 0.3rem; border-radius: 4px;">{{ log.api_key.label }}</span>
+                        {% else %}
+                        key (deleted)
+                        {% endif %}
+                    </div>
+                    <div style="font-size:0.7rem; color:var(--text-secondary); margin-top:0.25rem;">
+                        {{ log.timestamp.strftime("%b %d, %Y %H:%M:%S") }}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Trigger manual scan from the inventory dashboard table using fetch
+function triggerQuickScan(keyId) {
+    const btn = document.getElementById(`scan-btn-${keyId}`);
+    const badge = document.getElementById(`badge-${keyId}`);
+    
+    if (!btn || btn.disabled) return;
+    
+    // Disable button and update UI state
+    btn.disabled = true;
+    const origHtml = btn.innerHTML;
+    btn.innerHTML = `<svg class="animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="12" height="12" style="animation: spin 1s linear infinite;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 7.89H18.24" /></svg> Scanning...`;
+    
+    fetch(`/keys/${keyId}/scan-now`, {
+        method: "POST"
+    })
+    .then(res => {
+        if (!res.ok) throw new Error("API scan failed.");
+        return res.json();
+    })
+    .then(data => {
+        // Show notification toast
+        showToast(data.message, data.leaked ? "error" : "success");
+        
+        // Update badge and reload status
+        if (badge) {
+            badge.className = `badge badge-${data.leaked ? 'leaked' : 'active'}`;
+            badge.innerText = data.leaked ? 'leaked' : 'active';
+        }
+        
+        // Wait 1.2s then reload page stats for chart accuracy
+        setTimeout(() => {
+            window.location.reload();
+        }, 1200);
+    })
+    .catch(err => {
+        console.error(err);
+        showToast("Error executing credentials scan.", "error");
+        btn.disabled = false;
+        btn.innerHTML = origHtml;
+    });
+}
+
+document.addEventListener("DOMContentLoaded", function() {
+    // Set global Chart.js defaults for dark theme
+    Chart.defaults.color = "#94a3b8";
+    Chart.defaults.borderColor = "rgba(255, 255, 255, 0.08)";
+    Chart.defaults.font.family = "'Inter', sans-serif";
+
+    fetch("/dashboard/chart-data")
+        .then(res => res.json())
+        .then(data => {
+            // 1. Status Doughnut Chart
+            const statusCtx = document.getElementById("statusChart").getContext("2d");
+            new Chart(statusCtx, {
+                type: "doughnut",
+                data: {
+                    labels: data.status_chart.labels.map(l => l.toUpperCase()),
+                    datasets: [{
+                        data: data.status_chart.data,
+                        backgroundColor: ["#10b981", "#ef4444", "#94a3b8", "#f59e0b"],
+                        borderWidth: 2,
+                        borderColor: "#0b0f19"
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { 
+                            position: "right",
+                            labels: {
+                                boxWidth: 12,
+                                padding: 15
+                            }
+                        }
+                    },
+                    cutout: "75%"
+                }
+            });
+
+            // 2. Service Bar Chart
+            const serviceCtx = document.getElementById("serviceChart").getContext("2d");
+            const barGrad = serviceCtx.createLinearGradient(0, 0, 0, 200);
+            barGrad.addColorStop(0, '#a78bfa'); // Violet light
+            barGrad.addColorStop(1, '#6d28d9'); // Violet dark
+            
+            new Chart(serviceCtx, {
+                type: "bar",
+                data: {
+                    labels: data.service_chart.labels,
+                    datasets: [{
+                        label: "Keys Count",
+                        data: data.service_chart.data,
+                        backgroundColor: barGrad,
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { precision: 0, stepSize: 1 }
+                        }
+                    }
+                }
+            });
+
+            // 3. Leak Timeline Line Chart (Area glow)
+            const timelineCtx = document.getElementById("timelineChart").getContext("2d");
+            const lineGrad = timelineCtx.createLinearGradient(0, 0, 0, 250);
+            lineGrad.addColorStop(0, 'rgba(239, 68, 68, 0.25)');
+            lineGrad.addColorStop(1, 'rgba(239, 68, 68, 0.0)');
+            
+            new Chart(timelineCtx, {
+                type: "line",
+                data: {
+                    labels: data.timeline_chart.labels.map(d => {
+                        const parts = d.split('-');
+                        return `${parts[1]}/${parts[2]}`;
+                    }),
+                    datasets: [{
+                        label: "Leaks Detected",
+                        data: data.timeline_chart.data,
+                        borderColor: "#ef4444",
+                        backgroundColor: lineGrad,
+                        fill: true,
+                        tension: 0.35,
+                        borderWidth: 2,
+                        pointBackgroundColor: "#ef4444"
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { precision: 0, stepSize: 1 }
+                        }
+                    }
+                }
+            });
+
+            // 4. Token Consumption by Service (Horizontal Bar)
+            const tokenServiceCtx = document.getElementById("tokenServiceChart").getContext("2d");
+            const horizGrad = tokenServiceCtx.createLinearGradient(0, 0, 300, 0);
+            horizGrad.addColorStop(0, '#3b82f6');
+            horizGrad.addColorStop(1, '#06b6d4');
+            
+            new Chart(tokenServiceCtx, {
+                type: "bar",
+                data: {
+                    labels: data.token_service_chart.labels,
+                    datasets: [{
+                        data: data.token_service_chart.data,
+                        backgroundColor: horizGrad,
+                        borderRadius: 5
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return value.toLocaleString();
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // 5. Daily Token Consumption Timeline
+            const tokenTimelineCtx = document.getElementById("tokenTimelineChart").getContext("2d");
+            const tokenLineGrad = tokenTimelineCtx.createLinearGradient(0, 0, 0, 200);
+            tokenLineGrad.addColorStop(0, 'rgba(6, 182, 212, 0.2)');
+            tokenLineGrad.addColorStop(1, 'rgba(6, 182, 212, 0.0)');
+            
+            new Chart(tokenTimelineCtx, {
+                type: "line",
+                data: {
+                    labels: data.token_timeline_chart.labels.map(d => {
+                        const parts = d.split('-');
+                        return `${parts[1]}/${parts[2]}`;
+                    }),
+                    datasets: [{
+                        label: "Tokens Consumed",
+                        data: data.token_timeline_chart.data,
+                        borderColor: "#06b6d4",
+                        backgroundColor: tokenLineGrad,
+                        fill: true,
+                        tension: 0.35,
+                        borderWidth: 2,
+                        pointBackgroundColor: "#06b6d4"
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return value.toLocaleString();
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        })
+        .catch(err => {
+            console.error("Failed to load chart data:", err);
+            showToast("Failed to load analytics visualizations.", "error");
+        });
+});
+</script>
+
+<style>
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+.animate-spin {
+    display: inline-block;
+}
+</style>
+{% endblock %}

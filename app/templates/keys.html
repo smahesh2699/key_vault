@@ -1,0 +1,470 @@
+{% extends "base.html" %}
+
+{% block title %}Keys Vault — KeyVault{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Credentials Vault</h1>
+    <button class="btn btn-primary" onclick="openModal('addKeyModal')">
+        <svg style="width:18px;height:18px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+        </svg>
+        <span>Add API Key</span>
+    </button>
+</div>
+
+<!-- Keys Inventory Table -->
+<div class="table-container">
+    <table class="custom-table" id="keys-table">
+        <thead>
+            <tr>
+                <th>Label</th>
+                <th>Service</th>
+                <th>Safe Prefix</th>
+                <th>Plan</th>
+                <th>Status</th>
+                <th>Created</th>
+                <th>Expires</th>
+                <th>Last Scanned</th>
+                <th style="text-align: right;">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if not keys %}
+            <tr>
+                <td colspan="9" style="text-align: center; color: var(--text-secondary); padding: 3rem 0;">
+                    No API keys stored in your vault yet. Click "Add API Key" to secure your first credential.
+                </td>
+            </tr>
+            {% else %}
+                {% for key in keys %}
+                <tr id="key-row-{{ key.id }}">
+                    <td style="font-weight: 600;">{{ key.label }}</td>
+                    <td>{{ key.service }}</td>
+                    <td><code class="code-prefix">{{ key.key_prefix }}...</code></td>
+                    <td>
+                        <span class="badge" style="{% if key.billing_plan == 'paid' %}background-color:rgba(245,158,11,0.08); color:var(--color-warning); border:1px solid rgba(245,158,11,0.15);{% else %}background-color:rgba(148,163,184,0.05); color:var(--text-secondary); border:1px solid rgba(148,163,184,0.1);{% endif %}">
+                            {{ key.billing_plan | upper }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if key.status == 'active' %}
+                            <span class="badge badge-active">Active</span>
+                        {% elif key.status == 'leaked' %}
+                            <span class="badge badge-leaked">Leaked</span>
+                        {% elif key.status == 'revoked' %}
+                            <span class="badge badge-revoked">Revoked</span>
+                        {% elif key.status == 'expired' %}
+                            <span class="badge badge-expired">Expired</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ key.created_at.strftime("%Y-%m-%d") }}</td>
+                    <td>
+                        {% if key.expires_at %}
+                            {{ key.expires_at.strftime("%Y-%m-%d") }}
+                        {% else %}
+                            <span style="color: var(--text-secondary); font-size:0.875rem;">Never</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if key.last_scanned_at %}
+                            {{ key.last_scanned_at.strftime("%Y-%m-%d %H:%M") }}
+                        {% else %}
+                            <span style="color: var(--text-secondary); font-size:0.75rem;">Never Scanned</span>
+                        {% endif %}
+                    </td>
+                    <td style="text-align: right;">
+                        <div style="display: inline-flex; gap: 0.5rem; justify-content: flex-end;">
+                            <button class="btn btn-secondary btn-sm" onclick="showRevealModal({{ key.id }}, '{{ key.label }}')" title="Reveal Secret">
+                                <svg style="width:16px;height:16px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                            </button>
+                            
+                            <a href="/keys/{{ key.id }}/analytics" class="btn btn-secondary btn-sm" title="View Key Analytics">
+                                <svg style="width:16px;height:16px;color:var(--color-info)" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z" />
+                                </svg>
+                            </a>
+                            
+                            <button class="btn btn-secondary btn-sm" onclick="showEditModal({{ key.id }}, '{{ key.label }}', '{{ key.service }}', '{% if key.expires_at %}{{ key.expires_at.strftime('%Y-%m-%dT%H:%M') }}{% endif %}', '{{ key.billing_plan }}')" title="Edit Metadata">
+                                <svg style="width:16px;height:16px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                            </button>
+                            
+                            {% if key.status != 'revoked' %}
+                            <button class="btn btn-secondary btn-sm" id="scan-btn-{{ key.id }}" onclick="scanKey({{ key.id }})" title="Scan for Leaks">
+                                <svg style="width:16px;height:16px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                </svg>
+                            </button>
+                            
+                            <button class="btn btn-secondary btn-sm" onclick="revokeKey({{ key.id }})" title="Revoke Key">
+                                <svg style="width:16px;height:16px;color:var(--color-warning)" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                                </svg>
+                            </button>
+                            {% endif %}
+                            
+                            <button class="btn btn-secondary btn-sm" onclick="deleteKey({{ key.id }})" title="Delete Key">
+                                <svg style="width:16px;height:16px;color:var(--color-danger)" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Modal: Add Key -->
+<div class="modal-overlay" id="addKeyModal">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h3 class="modal-title">Store New API Key</h3>
+            <button class="modal-close" onclick="closeModal('addKeyModal')">&times;</button>
+        </div>
+        <form id="add-key-form">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="key-label" class="form-label">Key Label / Name</label>
+                    <input type="text" id="key-label" name="label" class="form-input" placeholder="e.g. OpenAI Production Key" required>
+                </div>
+                <div class="form-group">
+                    <label for="key-service" class="form-label">Service Provider</label>
+                    <select id="key-service" name="service" class="form-select" required>
+                        <option value="OpenAI">OpenAI</option>
+                        <option value="AWS">Amazon Web Services (AWS)</option>
+                        <option value="Stripe">Stripe</option>
+                        <option value="GitHub">GitHub</option>
+                        <option value="GoogleCloud">Google Cloud Platform</option>
+                        <option value="Custom">Custom / Other Provider</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="key-value" class="form-label">API Key Secret Value</label>
+                    <input type="password" id="key-value" name="value" class="form-input" placeholder="Paste your secret key here" required>
+                    <span style="font-size:0.75rem; color:var(--text-secondary); margin-top:0.25rem; display:block;">
+                        Values are encrypted using Fernet at rest. We never log or share raw secrets.
+                    </span>
+                </div>
+                <div class="form-group">
+                    <label for="key-expires" class="form-label">Expiration Date (Optional)</label>
+                    <input type="datetime-local" id="key-expires" name="expires_at" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label for="key-billing-plan" class="form-label">Billing Plan / Usage Tier</label>
+                    <select id="key-billing-plan" name="billing_plan" class="form-select" required>
+                        <option value="auto" selected>Auto-detect Plan (Recommended)</option>
+                        <option value="free">Free Tier Plan</option>
+                        <option value="paid">Paid (Pay-as-you-go) Plan</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('addKeyModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Secret</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Reveal Key (Prompt for Password) -->
+<div class="modal-overlay" id="revealKeyModal">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h3 class="modal-title">Reveal API Key</h3>
+            <button class="modal-close" onclick="closeRevealModal()">&times;</button>
+        </div>
+        <form id="reveal-key-form">
+            <input type="hidden" id="reveal-key-id">
+            <div class="modal-body">
+                <p style="font-size:0.875rem; color:var(--text-secondary); margin-bottom:1rem;">
+                    Confirm your security credentials to decrypt key: <strong id="reveal-key-label" style="color:var(--text-primary);"></strong>
+                </p>
+                <div class="form-group" id="reveal-password-group">
+                    <label for="reveal-password" class="form-label">Enter Account Password</label>
+                    <input type="password" id="reveal-password" name="password" class="form-input" placeholder="••••••••" required>
+                </div>
+                
+                <div id="revealed-value-container" style="display:none;">
+                    <label class="form-label">Decrypted Key Value</label>
+                    <div class="revealed-value-box">
+                        <span id="decrypted-key-display" style="flex-grow:1; white-space:pre-wrap;"></span>
+                        <button type="button" class="copy-btn" id="copy-revealed-btn" title="Copy to clipboard">
+                            <svg style="width:20px;height:20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                            </svg>
+                        </button>
+                    </div>
+                    <span style="font-size:0.75rem; color:var(--color-warning); margin-top:0.5rem; display:block;">
+                        Warning: Do not share this key or leave it exposed on your screen.
+                    </span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeRevealModal()">Close</button>
+                <button type="submit" class="btn btn-primary" id="reveal-submit-btn">Decrypt</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Edit Key Metadata -->
+<div class="modal-overlay" id="editKeyModal">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h3 class="modal-title">Edit API Key Details</h3>
+            <button class="modal-close" onclick="closeModal('editKeyModal')">&times;</button>
+        </div>
+        <form id="edit-key-form">
+            <input type="hidden" id="edit-key-id" name="id">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="edit-label" class="form-label">Key Label / Name</label>
+                    <input type="text" id="edit-label" name="label" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-service" class="form-label">Service Provider</label>
+                    <select id="edit-service" name="service" class="form-select" required>
+                        <option value="OpenAI">OpenAI</option>
+                        <option value="AWS">Amazon Web Services (AWS)</option>
+                        <option value="Stripe">Stripe</option>
+                        <option value="GitHub">GitHub</option>
+                        <option value="GoogleCloud">Google Cloud Platform</option>
+                        <option value="Custom">Custom / Other Provider</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="edit-expires" class="form-label">Expiration Date (Optional)</label>
+                    <input type="datetime-local" id="edit-expires" name="expires_at" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label for="edit-billing-plan" class="form-label">Billing Plan / Usage Tier</label>
+                    <select id="edit-billing-plan" name="billing_plan" class="form-select" required>
+                        <option value="auto">Auto-detect Plan (Recommended)</option>
+                        <option value="free">Free Tier Plan</option>
+                        <option value="paid">Paid (Pay-as-you-go) Plan</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('editKeyModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Update Metadata</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Handle API Key Form Submissions via AJAX
+document.getElementById("add-key-form").addEventListener("submit", function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    
+    fetch("/keys", {
+        method: "POST",
+        body: formData
+    })
+    .then(async res => {
+        const data = await res.json();
+        if (res.ok) {
+            showToast(data.message || "API key added successfully!");
+            closeModal("addKeyModal");
+            setTimeout(() => { location.reload(); }, 1000);
+        } else {
+            showToast(data.error || "Failed to add API key.", "error");
+        }
+    })
+    .catch(err => {
+        showToast("An error occurred during submission.", "error");
+        console.error(err);
+    });
+});
+
+// Reveal Key Flow
+function showRevealModal(keyId, label) {
+    document.getElementById("reveal-key-id").value = keyId;
+    document.getElementById("reveal-key-label").textContent = label;
+    document.getElementById("reveal-password").value = "";
+    document.getElementById("reveal-password-group").style.display = "block";
+    document.getElementById("revealed-value-container").style.display = "none";
+    document.getElementById("reveal-submit-btn").style.display = "block";
+    openModal("revealKeyModal");
+}
+
+function closeRevealModal() {
+    closeModal("revealKeyModal");
+}
+
+document.getElementById("reveal-key-form").addEventListener("submit", function(e) {
+    e.preventDefault();
+    const keyId = document.getElementById("reveal-key-id").value;
+    const formData = new FormData(this);
+    
+    fetch(`/keys/${keyId}/reveal`, {
+        method: "POST",
+        body: formData
+    })
+    .then(async res => {
+        const data = await res.json();
+        if (res.ok) {
+            document.getElementById("reveal-password-group").style.display = "none";
+            document.getElementById("reveal-submit-btn").style.display = "none";
+            document.getElementById("decrypted-key-display").textContent = data.value;
+            document.getElementById("revealed-value-container").style.display = "block";
+            
+            // Wire up copy button
+            const copyBtn = document.getElementById("copy-revealed-btn");
+            copyBtn.onclick = function() {
+                copyToClipboard(data.value, copyBtn);
+            };
+        } else {
+            showToast(data.error || "Incorrect password.", "error");
+        }
+    })
+    .catch(err => {
+        showToast("Error decrypyting key.", "error");
+        console.error(err);
+    });
+});
+
+// Edit Key Flow
+function showEditModal(keyId, label, service, expiresAt, billingPlan) {
+    document.getElementById("edit-key-id").value = keyId;
+    document.getElementById("edit-label").value = label;
+    document.getElementById("edit-service").value = service;
+    document.getElementById("edit-billing-plan").value = billingPlan || "free";
+    
+    // Formatting date helper
+    if (expiresAt) {
+        // Convert dates from DB standard format (YYYY-MM-DD HH:MM:SS) if required
+        document.getElementById("edit-expires").value = expiresAt.substring(0, 16);
+    } else {
+        document.getElementById("edit-expires").value = "";
+    }
+    openModal("editKeyModal");
+}
+
+document.getElementById("edit-key-form").addEventListener("submit", function(e) {
+    e.preventDefault();
+    const keyId = document.getElementById("edit-key-id").value;
+    const formData = new FormData(this);
+    
+    fetch(`/keys/${keyId}/update`, {
+        method: "POST",
+        body: formData
+    })
+    .then(async res => {
+        const data = await res.json();
+        if (res.ok) {
+            showToast(data.message || "Metadata updated!");
+            closeModal("editKeyModal");
+            setTimeout(() => { location.reload(); }, 1000);
+        } else {
+            showToast(data.error || "Failed to update details.", "error");
+        }
+    })
+    .catch(err => {
+        showToast("An error occurred.", "error");
+        console.error(err);
+    });
+});
+
+// Revoke Key Action
+function revokeKey(keyId) {
+    if (confirm("Are you sure you want to revoke this API key? This updates the status in vault but does not delete the record.")) {
+        fetch(`/keys/${keyId}/revoke`, {
+            method: "POST"
+        })
+        .then(async res => {
+            const data = await res.json();
+            if (res.ok) {
+                showToast(data.message || "API key revoked.");
+                setTimeout(() => { location.reload(); }, 1000);
+            } else {
+                showToast(data.error || "Failed to revoke.", "error");
+            }
+        })
+        .catch(err => {
+            showToast("Network error occurred.", "error");
+        });
+    }
+}
+
+// Delete Key Action
+function deleteKey(keyId) {
+    if (confirm("Warning: Are you sure you want to permanently delete this API key from the vault? This cannot be undone.")) {
+        fetch(`/keys/${keyId}`, {
+            method: "DELETE"
+        })
+        .then(async res => {
+            const data = await res.json();
+            if (res.ok) {
+                showToast(data.message || "API key deleted permanently.");
+                const row = document.getElementById(`key-row-${keyId}`);
+                if (row) row.remove();
+                
+                // If table is now empty, reload to show empty state
+                const table = document.getElementById("keys-table");
+                if (table.getElementsByTagName("tbody")[0].rows.length === 0) {
+                    location.reload();
+                }
+            } else {
+                showToast(data.error || "Failed to delete.", "error");
+            }
+        })
+        .catch(err => {
+            showToast("Network error occurred.", "error");
+        });
+    }
+}
+
+// Trigger Leak Scan
+function scanKey(keyId) {
+    const btn = document.getElementById(`scan-btn-${keyId}`);
+    if (btn) {
+        btn.disabled = true;
+        // Inject loading spinner style or rotation
+        btn.style.opacity = "0.5";
+    }
+    
+    showToast("Starting leak detection scan on GitHub public code...");
+    
+    fetch(`/keys/${keyId}/scan-now`, {
+        method: "POST"
+    })
+    .then(async res => {
+        const data = await res.json();
+        if (res.ok) {
+            if (data.leaked) {
+                showToast(data.message || "Key leak detected! Placed in alerts queue.", "error");
+            } else {
+                showToast(data.message || "Scan finished. No leaks detected.");
+            }
+            setTimeout(() => { location.reload(); }, 1500);
+        } else {
+            showToast(data.error || "Scan failed.", "error");
+            if (btn) {
+                btn.disabled = false;
+                btn.style.opacity = "1";
+            }
+        }
+    })
+    .catch(err => {
+        showToast("Scan connection failed.", "error");
+        if (btn) {
+            btn.disabled = false;
+            btn.style.opacity = "1";
+        }
+    });
+}
+</script>
+{% endblock %}

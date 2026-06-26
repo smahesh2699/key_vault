@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block title %}Audit Trail — KeyVault{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Activity Audit Trail</h1>
+</div>
+
+<!-- Filters Card -->
+<div class="card" style="margin-bottom: 2rem; padding: 1.25rem;">
+    <form method="GET" action="/audit" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) auto; gap: 1rem; align-items: flex-end;">
+        <div class="form-group" style="margin-bottom: 0;">
+            <label for="filter-action" class="form-label">Filter Action</label>
+            <select id="filter-action" name="action" class="form-select">
+                <option value="">All Actions</option>
+                <option value="created" {% if current_action == 'created' %}selected{% endif %}>Created</option>
+                <option value="viewed" {% if current_action == 'viewed' %}selected{% endif %}>Viewed (Decrypted)</option>
+                <option value="rotated" {% if current_action == 'rotated' %}selected{% endif %}>Rotated / Updated</option>
+                <option value="revoked" {% if current_action == 'revoked' %}selected{% endif %}>Revoked</option>
+                <option value="scanned" {% if current_action == 'scanned' %}selected{% endif %}>Scanned</option>
+                <option value="resolved" {% if current_action == 'resolved' %}selected{% endif %}>Resolved Leak</option>
+                <option value="deleted" {% if current_action == 'deleted' %}selected{% endif %}>Deleted</option>
+            </select>
+        </div>
+        
+        <div class="form-group" style="margin-bottom: 0;">
+            <label for="filter-key" class="form-label">Filter API Key</label>
+            <select id="filter-key" name="key_id" class="form-select">
+                <option value="">All Keys</option>
+                {% for key in keys %}
+                <option value="{{ key.id }}" {% if current_key_id == key.id %}selected{% endif %}>
+                    {{ key.label }} ({{ key.service }})
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div style="display: flex; gap: 0.5rem;">
+            <button type="submit" class="btn btn-primary btn-sm" style="padding: 0.7rem 1rem;">
+                Filter
+            </button>
+            <a href="/audit" class="btn btn-secondary btn-sm" style="padding: 0.7rem 1rem;">
+                Reset
+            </a>
+        </div>
+    </form>
+</div>
+
+<!-- Logs Timeline List -->
+<div class="table-container">
+    <table class="custom-table">
+        <thead>
+            <tr>
+                <th>Action</th>
+                <th>API Key Label</th>
+                <th>Service Context</th>
+                <th>Actor</th>
+                <th>Timestamp</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if not logs %}
+            <tr>
+                <td colspan="5" style="text-align: center; color: var(--text-secondary); padding: 3rem 0;">
+                    No audit records match the selected filters.
+                </td>
+            </tr>
+            {% else %}
+                {% for log in logs %}
+                <tr>
+                    <td>
+                        {% if log.action == 'created' %}
+                            <span class="badge" style="background-color:rgba(139,92,246,0.1); color:var(--primary);">Created</span>
+                        {% elif log.action == 'viewed' %}
+                            <span class="badge" style="background-color:rgba(6,182,212,0.1); color:var(--color-info);">Revealed</span>
+                        {% elif log.action == 'rotated' %}
+                            <span class="badge" style="background-color:rgba(245,158,11,0.1); color:var(--color-warning);">Rotated</span>
+                        {% elif log.action == 'revoked' %}
+                            <span class="badge" style="background-color:rgba(148,163,184,0.1); color:var(--text-secondary);">Revoked</span>
+                        {% elif log.action == 'scanned' %}
+                            <span class="badge" style="background-color:rgba(59,130,246,0.1); color:var(--secondary);">Scanned</span>
+                        {% elif log.action == 'resolved' %}
+                            <span class="badge" style="background-color:rgba(16,185,129,0.1); color:var(--color-success);">Resolved</span>
+                        {% elif log.action == 'deleted' %}
+                            <span class="badge" style="background-color:rgba(239,68,68,0.1); color:var(--color-danger);">Deleted</span>
+                        {% else %}
+                            <span class="badge" style="background-color:rgba(255,255,255,0.05);">{{ log.action }}</span>
+                        {% endif %}
+                    </td>
+                    <td style="font-weight: 600;">
+                        {% if log.api_key %}
+                            {{ log.api_key.label }}
+                        {% else %}
+                            <span style="color:var(--text-secondary); font-style:italic;">Deleted Key</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if log.api_key %}
+                            {{ log.api_key.service }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                    <td>{{ user.name }}</td>
+                    <td style="color: var(--text-secondary);">{{ log.timestamp.strftime("%Y-%m-%d %H:%M:%S") }} UTC</td>
+                </tr>
+                {% endfor %}
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Pagination -->
+{% if total_pages > 1 %}
+<div class="pagination">
+    {% if page > 1 %}
+    <a href="/audit?page={{ page - 1 }}&action={{ current_action }}&key_id={{ current_key_id }}" class="btn btn-secondary btn-sm">
+        &larr; Previous
+    </a>
+    {% endif %}
+    
+    <span class="pagination-info">Page {{ page }} of {{ total_pages }}</span>
+    
+    {% if page < total_pages %}
+    <a href="/audit?page={{ page + 1 }}&action={{ current_action }}&key_id={{ current_key_id }}" class="btn btn-secondary btn-sm">
+        Next &rarr;
+    </a>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}

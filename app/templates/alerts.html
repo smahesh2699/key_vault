@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block title %}Leak Alerts — KeyVault{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Leak Alerts Inbox</h1>
+</div>
+
+<!-- Alerts List -->
+{% if not alerts %}
+<div class="card" style="text-align: center; color: var(--text-secondary); padding: 4rem 2rem;">
+    <svg style="width: 48px; height: 48px; color: var(--color-success); margin-bottom: 1rem; margin-inline: auto; display: block;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+    </svg>
+    <h3 style="color: var(--text-primary); margin-bottom: 0.5rem; font-size: 1.125rem;">Your credentials are safe</h3>
+    <p style="font-size: 0.875rem;">No key exposure or leaks have been detected on public code repositories.</p>
+</div>
+{% else %}
+<div style="display: flex; flex-direction: column; gap: 1.25rem;">
+    {% for alert in alerts %}
+    <div class="card" id="alert-card-{{ alert.id }}" style="border-left: 4px solid {% if alert.resolved %}var(--color-success){% else %}var(--color-danger){% endif %}; padding: 1.5rem; display: flex; justify-content: space-between; align-items: center; gap: 2rem;">
+        <div style="flex-grow: 1;">
+            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;">
+                <h3 style="font-size: 1.125rem; font-weight: 700;">{{ alert.api_key.label }}</h3>
+                <span class="badge" style="background-color: rgba(255,255,255,0.05);">{{ alert.api_key.service }}</span>
+                {% if alert.resolved %}
+                <span class="badge badge-active">Resolved</span>
+                {% else %}
+                <span class="badge badge-leaked">Active Leak</span>
+                {% endif %}
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.875rem; color: var(--text-secondary);">
+                <div>
+                    <strong>Leaked Prefix:</strong> <code class="code-prefix">{{ alert.api_key.key_prefix }}...</code>
+                </div>
+                <div>
+                    <strong>Detection Source:</strong> 
+                    {% if alert.source == 'github_code_search' %}
+                        GitHub Code Search
+                    {% else %}
+                        GitHub Native Secret Scanning
+                    {% endif %}
+                </div>
+                <div>
+                    <strong>Detected At:</strong> {{ alert.detected_at.strftime("%Y-%m-%d %H:%M:%S") }}
+                </div>
+                {% if alert.source_url %}
+                <div style="margin-top: 0.5rem;">
+                    <a href="{{ alert.source_url }}" target="_blank" class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.75rem;">
+                        <svg style="width: 14px; height: 14px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        </svg>
+                        <span>View Leaked Code Location</span>
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div>
+            {% if not alert.resolved %}
+            <button class="btn btn-primary btn-sm" onclick="resolveAlert({{ alert.id }})">
+                Mark Resolved
+            </button>
+            {% else %}
+            <span style="font-size:0.875rem; color:var(--color-success); font-weight:600; display:flex; align-items:center; gap:0.25rem;">
+                <svg style="width: 18px; height: 18px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+                <span>Addressed</span>
+            </span>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function resolveAlert(alertId) {
+    if (confirm("Confirm that this leak incident has been mitigated (e.g. key has been rotated or deleted on provider)?")) {
+        fetch(`/alerts/${alertId}/resolve`, {
+            method: "POST"
+        })
+        .then(async res => {
+            const data = await res.json();
+            if (res.ok) {
+                showToast("Leak alert marked as resolved.");
+                setTimeout(() => { location.reload(); }, 1000);
+            } else {
+                showToast(data.error || "Failed to resolve alert.", "error");
+            }
+        })
+        .catch(err => {
+            showToast("Connection error occurred.", "error");
+        });
+    }
+}
+</script>
+{% endblock %}

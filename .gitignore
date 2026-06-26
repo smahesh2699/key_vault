@@ -1,0 +1,21 @@
+# Virtual Environment
+.venv/
+venv/
+ENV/
+
+# Python Cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Databases
+keyvault.db
+test_keyvault.db
+
+# Environment Secrets
+.env
+
+# VS Code
+.vscode/
